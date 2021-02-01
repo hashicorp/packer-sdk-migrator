@@ -61,7 +61,7 @@ func SearchLinesPrefix(lines []string, search string, start int) int {
 	return -1
 }
 
-func GetProviderPath(providerRepoName string) (string, error) {
+func GetpluginPath(pluginRepoName string) (string, error) {
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
 		log.Printf("GOPATH is empty")
@@ -75,7 +75,7 @@ func GetProviderPath(providerRepoName string) (string, error) {
 	paths := append([]string{wd}, filepath.SplitList(gopath)...)
 
 	for _, p := range paths {
-		fullPath := filepath.Join(p, "src", providerRepoName)
+		fullPath := filepath.Join(p, "src", pluginRepoName)
 		info, err := os.Stat(fullPath)
 
 		if err == nil {
@@ -89,11 +89,11 @@ func GetProviderPath(providerRepoName string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("Could not find %s in working directory or GOPATH: %s", providerRepoName, gopath)
+	return "", fmt.Errorf("Could not find %s in working directory or GOPATH: %s", pluginRepoName, gopath)
 }
 
-func RewriteGoMod(providerPath string, sdkVersion string, oldPackagePath string, newPackagePath string) error {
-	goModPath := filepath.Join(providerPath, "go.mod")
+func RewriteGoMod(pluginPath string, sdkVersion string, oldPackagePath string, newPackagePath string) error {
+	goModPath := filepath.Join(pluginPath, "go.mod")
 
 	input, err := ioutil.ReadFile(goModPath)
 	if err != nil {
@@ -165,11 +165,11 @@ func RewriteImportedPackageImports(filePath string, stringToReplace string, repl
 	return nil
 }
 
-func GoModTidy(providerPath string) error {
+func GoModTidy(pluginPath string) error {
 	args := []string{"go", "mod", "tidy"}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = os.Environ()
-	cmd.Dir = providerPath
+	cmd.Dir = pluginPath
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

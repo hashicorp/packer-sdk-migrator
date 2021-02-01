@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	version "github.com/hashicorp/go-version"
-	"github.com/hashicorp/tf-sdk-migrator/util"
+	"github.com/hashicorp/packer-sdk-migrator/util"
 	"github.com/mitchellh/cli"
 )
 
@@ -19,11 +19,11 @@ const (
 
 	goVersionConstraint = ">=1.12"
 
-	tfModPath           = "github.com/hashicorp/terraform"
-	tfVersionConstraint = ">=0.12.7"
+	packerModPath           = "github.com/hashicorp/packer"
+	packerVersionConstraint = ">=1.5.0"
 
-	sdkModPath           = "github.com/hashicorp/terraform-plugin-sdk"
-	sdkVersionConstraint = ">=1.0.0"
+	sdkModPath           = "github.com/hashicorp/packer-plugin-sdk"
+	sdkVersionConstraint = ">=0.1.0"
 )
 
 type AlreadyMigrated struct {
@@ -31,7 +31,7 @@ type AlreadyMigrated struct {
 }
 
 func (am *AlreadyMigrated) Error() string {
-	return fmt.Sprintf("Provider already migrated to SDK version %s", am.sdkVersion)
+	return fmt.Sprintf("plugin already migrated to SDK version %s", am.sdkVersion)
 }
 
 type command struct {
@@ -45,27 +45,27 @@ func CommandFactory(ui cli.Ui) func() (cli.Command, error) {
 }
 
 func (c *command) Help() string {
-	return `Usage: tf-sdk-migrator check [--help] [--csv] [IMPORT_PATH]
+	return `Usage: packer-sdk-migrator check [--help] [--csv] [IMPORT_PATH]
 
-  Checks whether the Terraform provider at PATH is ready to be migrated to the
-  new Terraform provider SDK (v1).
+  Checks whether the Packer plugin at PATH is ready to be migrated to the
+  new Packer plugin SDK (v0.1).
 
   IMPORT_PATH is resolved relative to $GOPATH/src/IMPORT_PATH. If it is not supplied,
-  it is assumed that the current working directory contains a Terraform provider.
+  it is assumed that the current working directory contains a Packer plugin.
 
-  By default, outputs a human-readable report and exits 0 if the provider is
+  By default, outputs a human-readable report and exits 0 if the plugin is
   ready for migration, 1 otherwise.
 
 Options:
   --csv    Output results in CSV format.
 
 Example:
-  tf-sdk-migrator check github.com/terraform-providers/terraform-provider-local
+  packer-sdk-migrator check github.com/my-packer-plugin/packer-builder-local
 `
 }
 
 func (c *command) Synopsis() string {
-	return "Checks whether a Terraform provider is ready to be migrated to the new SDK (v1)."
+	return "Checks whether a Packer plugin is ready to be migrated to the new SDK (v0.1)."
 }
 
 func (c *command) Run(args []string) int {
@@ -74,19 +74,19 @@ func (c *command) Run(args []string) int {
 	flags.BoolVar(&csv, "csv", false, "CSV output")
 	flags.Parse(args)
 
-	var providerRepoName string
-	var providerPath string
+	var pluginRepoName string
+	var pluginPath string
 	if flags.NArg() == 1 {
 		var err error
-		providerRepoName := flags.Args()[0]
-		providerPath, err = util.GetProviderPath(providerRepoName)
+		pluginRepoName := flags.Args()[0]
+		pluginPath, err = util.GetpluginPath(pluginRepoName)
 		if err != nil {
-			c.ui.Error(fmt.Sprintf("Error finding provider %s: %s", providerRepoName, err))
+			c.ui.Error(fmt.Sprintf("Error finding plugin %s: %s", pluginRepoName, err))
 			return 1
 		}
 	} else if flags.NArg() == 0 {
 		var err error
-		providerPath, err = os.Getwd()
+		pluginPath, err = os.Getwd()
 		if err != nil {
 			c.ui.Error(fmt.Sprintf("Error finding current working directory: %s", err))
 			return 1
@@ -95,7 +95,7 @@ func (c *command) Run(args []string) int {
 		return cli.RunResultHelp
 	}
 
-	err := runCheck(c.ui, providerPath, providerRepoName, csv)
+	err := runCheck(c.ui, pluginPath, pluginRepoName, csv)
 	if err != nil {
 		msg, alreadyMigrated := err.(*AlreadyMigrated)
 		if alreadyMigrated {
@@ -112,15 +112,15 @@ func (c *command) Run(args []string) int {
 	return 0
 }
 
-func RunCheck(ui cli.Ui, providerPath, repoName string) error {
-	return runCheck(ui, providerPath, repoName, false)
+func RunCheck(ui cli.Ui, pluginPath, repoName string) error {
+	return runCheck(ui, pluginPath, repoName, false)
 }
 
-func runCheck(ui cli.Ui, providerPath, repoName string, csv bool) error {
+func runCheck(ui cli.Ui, pluginPath, repoName string, csv bool) error {
 	if !csv {
 		ui.Output("Checking Go runtime version ...")
 	}
-	goVersion, goVersionSatisfied := CheckGoVersion(providerPath)
+	goVersion, goVersionSatisfied := CheckGoVersion(pluginPath)
 	if !csv {
 		if goVersionSatisfied {
 			ui.Info(fmt.Sprintf("Go version %s: OK.", goVersion))
@@ -130,54 +130,54 @@ func runCheck(ui cli.Ui, providerPath, repoName string, csv bool) error {
 	}
 
 	if !csv {
-		ui.Output("Checking whether provider uses Go modules...")
+		ui.Output("Checking whether plugin uses Go modules...")
 	}
-	goModulesUsed := CheckForGoModules(providerPath)
+	goModulesUsed := CheckForGoModules(pluginPath)
 	if !csv {
 		if goModulesUsed {
 			ui.Info("Go modules in use: OK.")
 		} else {
-			ui.Warn("Go modules not in use. Provider must use Go modules.")
+			ui.Warn("Go modules not in use. plugin must use Go modules.")
 		}
 	}
 
 	if !csv {
-		ui.Output(fmt.Sprintf("Checking version of %s to determine if provider was already migrated...", sdkModPath))
+		ui.Output(fmt.Sprintf("Checking version of %s to determine if plugin was already migrated...", sdkModPath))
 	}
-	sdkVersion, sdkVersionSatisfied, err := CheckDependencyVersion(providerPath, sdkModPath, sdkVersionConstraint)
+	sdkVersion, sdkVersionSatisfied, err := CheckDependencyVersion(pluginPath, sdkModPath, sdkVersionConstraint)
 	if err != nil {
-		return fmt.Errorf("Error getting SDK version for provider %s: %s", providerPath, err)
+		return fmt.Errorf("Error getting SDK version for plugin %s: %s", pluginPath, err)
 	}
 	if !csv {
 		if sdkVersionSatisfied {
 			return &AlreadyMigrated{sdkVersion}
 		} else if sdkVersion != "" {
-			return fmt.Errorf("Provider already migrated, but SDK version %s does not satisfy constraint %s.",
+			return fmt.Errorf("plugin already migrated, but SDK version %s does not satisfy constraint %s.",
 				sdkVersion, sdkVersionConstraint)
 		}
 	}
 
 	if !csv {
-		ui.Output(fmt.Sprintf("Checking version of %s used in provider...", tfModPath))
+		ui.Output(fmt.Sprintf("Checking version of %s used in plugin...", packerModPath))
 	}
-	tfVersion, tfVersionSatisfied, err := CheckDependencyVersion(providerPath, tfModPath, tfVersionConstraint)
+	packerVersion, packerVersionSatisfied, err := CheckDependencyVersion(pluginPath, packerModPath, packerVersionConstraint)
 	if err != nil {
-		return fmt.Errorf("Error getting Terraform version for provider %s: %s", providerPath, err)
+		return fmt.Errorf("Error getting Packer version for plugin %s: %s", pluginPath, err)
 	}
 	if !csv {
-		if tfVersionSatisfied {
-			ui.Info(fmt.Sprintf("Terraform version %s: OK.", tfVersion))
-		} else if tfVersion != "" {
-			ui.Warn(fmt.Sprintf("Terraform version does not satisfy constraint %s. Found Terraform version: %s", tfVersionConstraint, tfVersion))
+		if packerVersionSatisfied {
+			ui.Info(fmt.Sprintf("Packer version %s: OK.", packerVersion))
+		} else if packerVersion != "" {
+			ui.Warn(fmt.Sprintf("Packer version does not satisfy constraint %s. Found Packer version: %s", packerVersionConstraint, packerVersion))
 		} else {
-			return fmt.Errorf("This directory (%s) doesn't seem to be a Terraform provider.\nProviders depend on %s", providerPath, tfModPath)
+			return fmt.Errorf("This directory (%s) doesn't seem to be a Packer plugin.\nplugins depend on %s", pluginPath, packerModPath)
 		}
 	}
 
 	if !csv {
-		ui.Output("Checking whether provider uses deprecated SDK packages or identifiers...")
+		ui.Output("Checking whether plugin uses deprecated SDK packages or identifiers...")
 	}
-	removedPackagesInUse, removedIdentsInUse, err := CheckSDKPackageImportsAndRefs(providerPath)
+	removedPackagesInUse, removedIdentsInUse, err := CheckSDKPackageImportsAndRefs(pluginPath)
 	if err != nil {
 		return err
 	}
@@ -192,20 +192,20 @@ func runCheck(ui cli.Ui, providerPath, repoName string, csv bool) error {
 		formatRemovedPackages(ui, removedPackagesInUse)
 		formatRemovedIdents(ui, removedIdentsInUse)
 	}
-	constraintsSatisfied := goVersionSatisfied && goModulesUsed && tfVersionSatisfied && !usesRemovedPackagesOrIdents
+	constraintsSatisfied := goVersionSatisfied && goModulesUsed && packerVersionSatisfied && !usesRemovedPackagesOrIdents
 	if csv {
 		ui.Output(fmt.Sprintf("go_version,go_version_satisfies_constraint,uses_go_modules,sdk_version,sdk_version_satisfies_constraint,does_not_use_removed_packages,all_constraints_satisfied\n%s,%t,%t,%s,%t,%t,%t",
-			goVersion, goVersionSatisfied, goModulesUsed, tfVersion, tfVersionSatisfied, !usesRemovedPackagesOrIdents, constraintsSatisfied))
+			goVersion, goVersionSatisfied, goModulesUsed, packerVersion, packerVersionSatisfied, !usesRemovedPackagesOrIdents, constraintsSatisfied))
 	} else {
-		var prettyProviderName string
+		var prettypluginName string
 		if repoName != "" {
-			prettyProviderName = " " + repoName
+			prettypluginName = " " + repoName
 		}
 		if constraintsSatisfied {
-			ui.Info(fmt.Sprintf("\nAll constraints satisfied. Provider%s can be migrated to the new SDK.\n", prettyProviderName))
+			ui.Info(fmt.Sprintf("\nAll constraints satisfied. plugin%s can be migrated to the new SDK.\n", prettypluginName))
 			return nil
-		} else if goModulesUsed && tfVersionSatisfied && !usesRemovedPackagesOrIdents {
-			ui.Info(fmt.Sprintf("\nProvider%s can be migrated to the new SDK, but Go version %s is recommended.\n", prettyProviderName, goVersionConstraint))
+		} else if goModulesUsed && packerVersionSatisfied && !usesRemovedPackagesOrIdents {
+			ui.Info(fmt.Sprintf("\nplugin%s can be migrated to the new SDK, but Go version %s is recommended.\n", prettypluginName, goVersionConstraint))
 			return nil
 		}
 	}
@@ -239,7 +239,7 @@ func formatRemovedIdents(ui cli.Ui, removedIdentsInUse []*Offence) {
 	}
 }
 
-func CheckGoVersion(providerPath string) (goVersion string, satisfiesConstraint bool) {
+func CheckGoVersion(pluginPath string) (goVersion string, satisfiesConstraint bool) {
 	c, err := version.NewConstraint(goVersionConstraint)
 
 	runtimeVersion := strings.TrimLeft(runtime.Version(), "go")
@@ -252,28 +252,28 @@ func CheckGoVersion(providerPath string) (goVersion string, satisfiesConstraint 
 	return runtimeVersion, c.Check(v)
 }
 
-func CheckForGoModules(providerPath string) (usingModules bool) {
-	if _, err := os.Stat(filepath.Join(providerPath, "go.mod")); err != nil {
-		log.Printf("[WARN] 'go.mod' file not found - provider %s is not using Go modules", providerPath)
+func CheckForGoModules(pluginPath string) (usingModules bool) {
+	if _, err := os.Stat(filepath.Join(pluginPath, "go.mod")); err != nil {
+		log.Printf("[WARN] 'go.mod' file not found - plugin %s is not using Go modules", pluginPath)
 		return false
 	}
 	return true
 }
 
-func CheckSDKPackageImportsAndRefs(providerPath string) (removedPackagesInUse []string, packageRefsOffences []*Offence, err error) {
-	var providerImportDetails *ProviderImportDetails
+func CheckSDKPackageImportsAndRefs(pluginPath string) (removedPackagesInUse []string, packageRefsOffences []*Offence, err error) {
+	var pluginImportDetails *pluginImportDetails
 
-	providerImportDetails, err = GoListPackageImports(providerPath)
+	pluginImportDetails, err = GoListPackageImports(pluginPath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	removedPackagesInUse, err = CheckSDKPackageImports(providerImportDetails)
+	removedPackagesInUse, err = CheckSDKPackageImports(pluginImportDetails)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	packageRefsOffences, err = CheckSDKPackageRefs(providerImportDetails)
+	packageRefsOffences, err = CheckSDKPackageRefs(pluginImportDetails)
 	if err != nil {
 		return nil, nil, err
 	}

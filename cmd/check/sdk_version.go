@@ -10,10 +10,10 @@ import (
 	"golang.org/x/mod/module"
 )
 
-func CheckDependencyVersion(providerPath, modPath, constaint string) (string, bool, error) {
+func CheckDependencyVersion(pluginPath, modPath, constaint string) (string, bool, error) {
 	c, err := version.NewConstraint(constaint)
 
-	modVersion, err := ReadVersionFromModFile(providerPath, modPath)
+	modVersion, err := ReadVersionFromModFile(pluginPath, modPath)
 	if err != nil {
 		return "", false, err
 	}

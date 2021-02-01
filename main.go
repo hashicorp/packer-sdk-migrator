@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/hashicorp/logutils"
-	"github.com/hashicorp/tf-sdk-migrator/cmd/check"
-	"github.com/hashicorp/tf-sdk-migrator/cmd/migrate"
-	"github.com/hashicorp/tf-sdk-migrator/cmd/v2upgrade"
+	"github.com/hashicorp/packer-sdk-migrator/cmd/check"
+	"github.com/hashicorp/packer-sdk-migrator/cmd/migrate"
+	"github.com/hashicorp/packer-sdk-migrator/cmd/v2upgrade"
 	"github.com/mitchellh/cli"
 )
 
@@ -31,7 +31,7 @@ func main() {
 		},
 	}
 
-	c := cli.NewCLI("tf-sdk-migrator", "0.1.0")
+	c := cli.NewCLI("packer-sdk-migrator", "0.1.0")
 	c.Args = os.Args[1:]
 	c.Commands = map[string]cli.CommandFactory{
 		check.CommandName:     check.CommandFactory(ui),

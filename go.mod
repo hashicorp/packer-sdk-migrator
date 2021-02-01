@@ -1,4 +1,4 @@
-module github.com/hashicorp/tf-sdk-migrator
+module github.com/hashicorp/packer-sdk-migrator
 
 go 1.12
 

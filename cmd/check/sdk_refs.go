@@ -7,7 +7,7 @@ import (
 	"go/token"
 	"path"
 
-	"github.com/hashicorp/tf-sdk-migrator/util"
+	"github.com/hashicorp/packer-sdk-migrator/util"
 	goList "github.com/kmoe/go-list"
 	refsParser "github.com/radeksimko/go-refs/parser"
 )
@@ -24,51 +24,21 @@ type identDeprecation struct {
 }
 
 var deprecations = []*identDeprecation{
-	{
-		"github.com/hashicorp/terraform/httpclient",
-		ast.NewIdent("UserAgentString"),
-		"This function has been removed, please use httpclient.TerraformUserAgent(version) instead",
-	},
-	{
-		"github.com/hashicorp/terraform/httpclient",
-		ast.NewIdent("New"),
-		"This function has been removed, please use DefaultPooledClient() with custom Transport/round-tripper from github.com/hashicorp/go-cleanhttp instead",
-	},
-	{
-		"github.com/hashicorp/terraform/terraform",
-		ast.NewIdent("UserAgentString"),
-		"This function has been removed, please use httpclient.TerraformUserAgent(version) instead",
-	},
-	{
-		"github.com/hashicorp/terraform/terraform",
-		ast.NewIdent("VersionString"),
-		"This function has been removed, please use helper/schema's Provider.TerraformVersion available from Provider.ConfigureFunc",
-	},
-	{
-		"github.com/hashicorp/terraform/config",
-		ast.NewIdent("UserAgentString"),
-		"Please don't use this",
-	},
-	{
-		"github.com/hashicorp/terraform/config",
-		ast.NewIdent("NewRawConfig"),
-		"terraform.NewResourceConfig and config.NewRawConfig have been removed, please use terraform.NewResourceConfigRaw",
-	},
-	{
-		"github.com/hashicorp/terraform/terraform",
-		ast.NewIdent("NewResourceConfig"),
-		"terraform.NewResourceConfig and config.NewRawConfig have been removed, please use terraform.NewResourceConfigRaw",
-	},
+	// {
+	// 	"github.com/hashicorp/terraform/httpclient",
+	// 	ast.NewIdent("UserAgentString"),
+	// 	"This function has been removed, please use httpclient.TerraformUserAgent(version) instead",
+	// },
 }
 
-// ProviderImports is a data structure we parse the `go list` output into
+// pluginImports is a data structure we parse the `go list` output into
 // for efficient searching
-type ProviderImportDetails struct {
+type pluginImportDetails struct {
 	AllImportPathsHash map[string]bool
-	Packages           map[string]ProviderPackage
+	Packages           map[string]pluginPackage
 }
 
-type ProviderPackage struct {
+type pluginPackage struct {
 	Dir         string
 	ImportPath  string
 	GoFiles     []string
@@ -77,21 +47,21 @@ type ProviderPackage struct {
 	TestImports []string
 }
 
-func GoListPackageImports(providerPath string) (*ProviderImportDetails, error) {
-	packages, err := goList.GoList(providerPath, "./...", "-mod=vendor")
+func GoListPackageImports(pluginPath string) (*pluginImportDetails, error) {
+	packages, err := goList.GoList(pluginPath, "./...", "-mod=vendor")
 	if err != nil {
 		return nil, err
 	}
 
 	allImportPathsHash := make(map[string]bool)
-	providerPackages := make(map[string]ProviderPackage)
+	pluginPackages := make(map[string]pluginPackage)
 
 	for _, p := range packages {
 		for _, i := range p.Imports {
 			allImportPathsHash[i] = true
 		}
 
-		providerPackages[p.ImportPath] = ProviderPackage{
+		pluginPackages[p.ImportPath] = pluginPackage{
 			Dir:         p.Dir,
 			ImportPath:  p.ImportPath,
 			GoFiles:     p.GoFiles,
@@ -101,18 +71,18 @@ func GoListPackageImports(providerPath string) (*ProviderImportDetails, error) {
 		}
 	}
 
-	return &ProviderImportDetails{
+	return &pluginImportDetails{
 		AllImportPathsHash: allImportPathsHash,
-		Packages:           providerPackages,
+		Packages:           pluginPackages,
 	}, nil
 }
 
-func CheckSDKPackageRefs(providerImportDetails *ProviderImportDetails) ([]*Offence, error) {
+func CheckSDKPackageRefs(pluginImportDetails *pluginImportDetails) ([]*Offence, error) {
 	offences := make([]*Offence, 0, 0)
 
 	for _, d := range deprecations {
 		fset := token.NewFileSet()
-		files, err := filesWhichImport(providerImportDetails, d.ImportPath)
+		files, err := filesWhichImport(pluginImportDetails, d.ImportPath)
 		if err != nil {
 			return nil, err
 		}
@@ -166,9 +136,9 @@ func findIdentifierPositions(fset *token.FileSet, nodes []ast.Node, ident *ast.I
 	return positions, nil
 }
 
-func filesWhichImport(providerImportDetails *ProviderImportDetails, importPath string) (files []string, e error) {
+func filesWhichImport(pluginImportDetails *pluginImportDetails, importPath string) (files []string, e error) {
 	files = []string{}
-	for _, p := range providerImportDetails.Packages {
+	for _, p := range pluginImportDetails.Packages {
 		if util.StringSliceContains(p.Imports, importPath) {
 			files = append(files, prependDirToFilePaths(p.GoFiles, p.Dir)...)
 		}
