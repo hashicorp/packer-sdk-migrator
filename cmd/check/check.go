@@ -45,19 +45,16 @@ func CommandFactory(ui cli.Ui) func() (cli.Command, error) {
 }
 
 func (c *command) Help() string {
-	return `Usage: packer-sdk-migrator check [--help] [--csv] [IMPORT_PATH]
+	return `Usage: packer-sdk-migrator check [--help] [PATH]
 
   Checks whether the Packer plugin at PATH is ready to be migrated to the
   new Packer plugin SDK (v0.1).
 
-  IMPORT_PATH is resolved relative to $GOPATH/src/IMPORT_PATH. If it is not supplied,
+  PATH is resolved relative to $GOPATH/src/PATH. If it is not supplied,
   it is assumed that the current working directory contains a Packer plugin.
 
   By default, outputs a human-readable report and exits 0 if the plugin is
   ready for migration, 1 otherwise.
-
-Options:
-  --csv    Output results in CSV format.
 
 Example:
   packer-sdk-migrator check github.com/my-packer-plugin/packer-builder-local

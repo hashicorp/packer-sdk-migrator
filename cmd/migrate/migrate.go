@@ -36,12 +36,12 @@ func CommandFactory(ui cli.Ui) func() (cli.Command, error) {
 }
 
 func (c *command) Help() string {
-	return `Usage: packer-sdk-migrator migrate [--help] [--sdk-version SDK_VERSION] [--force] [IMPORT_PATH]
+	return `Usage: packer-sdk-migrator migrate [--help] [--sdk-version SDK_VERSION] [--force] [PATH]
 
   Migrates the Packer plugin at PATH to the new Packer plugin
   SDK, defaulting to the git reference ` + defaultVersion + `.
 
-  IMPORT_PATH is resolved relative to $GOPATH/src/IMPORT_PATH. If it is not supplied,
+  PATH is resolved relative to $GOPATH/src/PATH. If it is not supplied,
   it is assumed that the current working directory contains a Packer plugin.
 
   Optionally, an SDK_VERSION can be passed, which is parsed as a Go module
