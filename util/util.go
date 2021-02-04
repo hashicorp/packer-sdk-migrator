@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"golang.org/x/mod/modfile"
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 var printConfig = printer.Config{
@@ -145,32 +146,21 @@ func RewriteImportedPackageImports(filePath string) error {
 		return err
 	}
 
-	revisedImports := []*ast.ImportSpec{}
+	addImports := map[string]string{}
+	deleteImports := map[string]string{}
+
 	for _, impSpec := range f.Imports {
 		impPath, err := strconv.Unquote(impSpec.Path.Value)
 		if err != nil {
 			log.Print(err)
 		}
-
-		if ONE_TO_ONE_REPLACEMENTS[impPath] != "" {
-			newImpPath := ONE_TO_ONE_REPLACEMENTS[impPath]
-
-			// copy impspec into revised imports, replacing the import path.
-			newImpSpec := &ast.ImportSpec{}
-			*newImpSpec = *impSpec
-
-			newImpSpec.Path.Value = strconv.Quote(newImpPath)
-			revisedImports = append(revisedImports, newImpSpec)
-		} else if PACKAGE_RENAME[impPath] != "" {
+		if newImpPath, ok := ONE_TO_ONE_REPLACEMENTS[impPath]; ok {
+			log.Printf("Changing import of %s to %s", impPath, newImpPath)
+			impSpec.Path.Value = strconv.Quote(newImpPath)
+		} else if newImpPath, ok := PACKAGE_RENAME[impPath]; ok {
 			// fix imports
-			newImpPath := PACKAGE_RENAME[impPath]
-
-			// copy impspec into revised imports, replacing the import path.
-			newImpSpec := &ast.ImportSpec{}
-			*newImpSpec = *impSpec
-
-			newImpSpec.Path.Value = strconv.Quote(newImpPath)
-			revisedImports = append(revisedImports, newImpSpec)
+			log.Printf("Changing import of %s to %s", impPath, newImpPath)
+			impSpec.Path.Value = strconv.Quote(newImpPath)
 
 			// fix package name in expressions that reference this package
 			pathparts := strings.Split(newImpPath, "/")
@@ -200,6 +190,8 @@ func RewriteImportedPackageImports(filePath string) error {
 				}
 			}), f)
 		} else if _, ok := PACKAGE_SPLIT[impPath]; ok {
+			log.Printf("Package %s has been refactored into multiple new SDK" +
+				"packages; walking the ast to update each object as required.")
 			// We store the package split map with the old import path as the
 			// original key so we can find the moved items easily; now we need
 			// to remap it so we can iterate over object names instead to figure
@@ -235,25 +227,45 @@ func RewriteImportedPackageImports(filePath string) error {
 							// newImpPath := impList[impPath]
 							pathparts := strings.Split(newImpPath, "/")
 							newImpName := pathparts[len(pathparts)-1]
+							// if we were importing with a custom name, retain
+							// that customization and append new path name.
+							if impSpec.Name != nil {
+								newImpName = oldNameString + "_" + newImpName
+							}
 							id.Name = newImpName
-							// add import path into revisedimports
-							newImpSpec := &ast.ImportSpec{}
-							*newImpSpec = *impSpec
-
-							newImpSpec.Path.Value = strconv.Quote(newImpPath)
-							revisedImports = append(revisedImports, newImpSpec)
-
-							log.Printf("renamed %s to %s", oldNameString, newImpName)
+							// Instead of copying import spec, create entirely
+							// new one.
+							if impSpec.Name == nil {
+								addImports[newImpPath] = ""
+								deleteImports[impPath] = ""
+							}
+							addImports[newImpPath] = newImpName
+							deleteImports[impPath] = oldNameString
 
 						}
 					}
 				}
 			}), f)
-		} else {
-			revisedImports = append(revisedImports, impSpec)
 		}
 	}
 
+	// Cannot add or delete imports to the imports list while looping over the
+	// list or we'll get some gross side effeects and miss imports altogether.
+	// Instead, loop over our dictionaries after the fact to add and delete
+	// the necessary imports only once per import path.
+	for impPath, impName := range addImports {
+		astutil.AddNamedImport(fset, f, impName, impPath)
+	}
+	for impPath, impName := range deleteImports {
+		deleted := astutil.DeleteNamedImport(fset, f, impName, impPath)
+		if !deleted {
+			log.Printf("issue deleting import %s; may need to manually delete", impPath)
+		}
+
+	}
+
+	// overwrite imports
+	ast.SortImports(fset, f)
 	out, err := os.Create(filePath)
 	if err != nil {
 		return err
