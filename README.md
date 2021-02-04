@@ -53,11 +53,3 @@ If you use vendored Go dependencies, you should run `go mod vendor` afterwards.
 ## `packer-sdk-migrator v2upgrade`: migrate from SDKv1 to SDKv2
 
 Migrates a Packer plugin using version 1.x of the standalone SDK to version 2.x of the standalone SDK, updating package import paths.
-
-```sh
-packer-sdk-migrator v2upgrade
-```
-
-Optionally, `--sdk-version` may be passed, which is parsed as a Go module release version. For example `packer-sdk-migrator v2upgrade --sdk-version v2.0.0-rc.1`.
-
-This command rewrites `go.mod` and updates package import paths, but does not replace deprecated identifiers, so it is likely that the plugin will not compile after upgrading. Please follow the steps in the [Packer Plugin SDK v2 Upgrade Guide](https://packer.io/docs/extend/guides/v2-upgrade-guide.html) after running this command.
