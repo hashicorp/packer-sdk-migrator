@@ -16,7 +16,7 @@ $GOBIN/packer-sdk-migrator
 Checks whether a Packer plugin is ready to migrate to the newly extracted Packer SDK package.
 
 ```sh
-packer-sdk-migrator check [--help] [--csv] PATH
+packer-sdk-migrator check [--help]
 ```
 
 Outputs a report containing:
@@ -38,7 +38,7 @@ Migrates the Packer plugin to the new extracted SDK (`github.com/hashicorp/packe
 **Note: No backup is made before modifying files. Please make sure your VCS staging area is clean.**
 
 ```sh
-packer-sdk-migrator migrate [--help] PATH
+packer-sdk-migrator migrate
 ```
 
 The eligibility check will be run first: migration will not proceed if this check fails.
