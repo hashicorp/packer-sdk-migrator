@@ -44,7 +44,7 @@ packer-sdk-migrator migrate [--help] PATH
 The eligibility check will be run first: migration will not proceed if this check fails.
 
 The migration tool will then make the following changes:
- - `go.mod`: replace `github.com/hashicorp/packer` dependency with `github.com/hashicorp/packer-plugin-sdk`
+ - `go.mod`: replace `github.com/hashicorp/packer` dependencies with their corresponding `github.com/hashicorp/packer-plugin-sdk` references. The SDK was refactored during the extraction process, so this will not always be a direct one-to-one string replacement, though it will be in some cases. Please report any issues you find so we can update our upgrade mapping.
  - rewrite import paths in all plugin `.go` files (except in `vendor/`) accordingly
  - run `go mod tidy`
 
