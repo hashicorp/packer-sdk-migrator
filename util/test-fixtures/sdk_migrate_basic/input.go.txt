@@ -7,20 +7,19 @@ import (
 	"log"
 
 	"github.com/hashicorp/hcl/v2/hcldec"
-	packercommon_common "github.com/hashicorp/packer-plugin-sdk/common"
-	"github.com/hashicorp/packer-plugin-sdk/guestexec"
-	packercommon_commonsteps "github.com/hashicorp/packer-plugin-sdk/multistep/commonsteps"
-	"github.com/hashicorp/packer-plugin-sdk/packer"
-	"github.com/hashicorp/packer-plugin-sdk/template/config"
-	interp "github.com/hashicorp/packer-plugin-sdk/template/interpolate"
+	packercommon "github.com/hashicorp/packer/common"
+	"github.com/hashicorp/packer/helper/config"
+	"github.com/hashicorp/packer/packer"
+	"github.com/hashicorp/packer/provisioner"
+	interp "github.com/hashicorp/packer/template/interpolate"
 )
 
 type Config struct {
 	Comment string `mapstructure:"comment"`
 	// named import with package split
-	packercommon_commonsteps.CDConfig
-	packercommon_commonsteps.FloppyConfig
-	packercommon_common.PackerConfig
+	packercommon.CDConfig
+	packercommon.FloppyConfig
+	packercommon.PackerConfig
 
 	// one to one rename with named import
 	ctx interp.Context
@@ -44,7 +43,7 @@ func (p *CommentProvisioner) Prepare(raws ...interface{}) error {
 	}
 
 	// Tests whether package rename works; selector will have to be updated
-	gc := &guestexec.GuestCommands{
+	gc := &provisioner.GuestCommands{
 		GuestOSType: "windows",
 		Sudo:        false,
 	}
