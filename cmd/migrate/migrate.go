@@ -17,7 +17,7 @@ const (
 	CommandName    = "migrate"
 	oldPackagePath = "github.com/hashicorp/packer"
 	newPackagePath = "github.com/hashicorp/packer-plugin-sdk"
-	defaultVersion = "v1.7.0"
+	defaultVersion = "v0.0.10"
 )
 
 var printConfig = printer.Config{
@@ -114,7 +114,7 @@ func (c *command) Run(args []string) int {
 			return filepath.SkipDir
 		}
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
-			err := util.RewriteImportedPackageImports(path, oldPackagePath, newPackagePath)
+			err := util.RewriteImportedPackageImports(path)
 			if err != nil {
 				return err
 			}
@@ -159,7 +159,11 @@ func HasVendorFolder(pluginPath string) (bool, error) {
 	vendorPath := filepath.Join(pluginPath, "vendor")
 	fs, err := os.Stat(vendorPath)
 	if err != nil {
-		return false, err
+		if os.IsNotExist(err) {
+			return false, nil
+		} else {
+			return false, err
+		}
 	}
 	if !fs.Mode().IsDir() {
 		return false, fmt.Errorf("%s is not folder (expected folder)", vendorPath)

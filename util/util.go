@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
@@ -126,7 +127,14 @@ func RewriteGoMod(pluginPath string, sdkVersion string, oldPackagePath string, n
 	return nil
 }
 
-func RewriteImportedPackageImports(filePath string, stringToReplace string, replacement string) error {
+type visitFn func(node ast.Node)
+
+func (fn visitFn) Visit(node ast.Node) ast.Visitor {
+	fn(node)
+	return fn
+}
+
+func RewriteImportedPackageImports(filePath string) error {
 	if _, err := os.Stat(filePath); err != nil {
 		return err
 	}
@@ -137,15 +145,112 @@ func RewriteImportedPackageImports(filePath string, stringToReplace string, repl
 		return err
 	}
 
+	revisedImports := []*ast.ImportSpec{}
 	for _, impSpec := range f.Imports {
 		impPath, err := strconv.Unquote(impSpec.Path.Value)
 		if err != nil {
 			log.Print(err)
 		}
-		// prevent partial matches on package names
-		if impPath == stringToReplace || strings.HasPrefix(impPath, stringToReplace+"/") {
-			newImpPath := strings.Replace(impPath, stringToReplace, replacement, -1)
-			impSpec.Path.Value = strconv.Quote(newImpPath)
+
+		if ONE_TO_ONE_REPLACEMENTS[impPath] != "" {
+			newImpPath := ONE_TO_ONE_REPLACEMENTS[impPath]
+
+			// copy impspec into revised imports, replacing the import path.
+			newImpSpec := &ast.ImportSpec{}
+			*newImpSpec = *impSpec
+
+			newImpSpec.Path.Value = strconv.Quote(newImpPath)
+			revisedImports = append(revisedImports, newImpSpec)
+		} else if PACKAGE_RENAME[impPath] != "" {
+			// fix imports
+			newImpPath := PACKAGE_RENAME[impPath]
+
+			// copy impspec into revised imports, replacing the import path.
+			newImpSpec := &ast.ImportSpec{}
+			*newImpSpec = *impSpec
+
+			newImpSpec.Path.Value = strconv.Quote(newImpPath)
+			revisedImports = append(revisedImports, newImpSpec)
+
+			// fix package name in expressions that reference this package
+			pathparts := strings.Split(newImpPath, "/")
+			newImpName := pathparts[len(pathparts)-1]
+
+			name := impSpec.Name
+			oldNameString := ""
+			if name != nil {
+				oldNameString = name.String()
+			}
+
+			if oldNameString == "" {
+				pathparts := strings.Split(impPath, "/")
+				oldNameString = pathparts[len(pathparts)-1]
+			}
+
+			ast.Walk(visitFn(func(n ast.Node) {
+				sel, ok := n.(*ast.SelectorExpr)
+				if ok {
+					id, ok := sel.X.(*ast.Ident)
+					if ok {
+						if id.Name == oldNameString {
+							id.Name = newImpName
+							log.Printf("renamed %s to %s", oldNameString, newImpName)
+						}
+					}
+				}
+			}), f)
+		} else if _, ok := PACKAGE_SPLIT[impPath]; ok {
+			// We store the package split map with the old import path as the
+			// original key so we can find the moved items easily; now we need
+			// to remap it so we can iterate over object names instead to figure
+			// out where they should end up.
+			remap := map[string]map[string]string{}
+
+			for newImportPath, structList := range PACKAGE_SPLIT[impPath] {
+				for _, val := range structList {
+					remap[val] = map[string]string{impPath: newImportPath}
+				}
+			}
+
+			// fix package name in expressions that reference this package
+			name := impSpec.Name
+			oldNameString := ""
+			if name != nil {
+				oldNameString = name.String()
+			}
+
+			if oldNameString == "" {
+				pathparts := strings.Split(impPath, "/")
+				oldNameString = pathparts[len(pathparts)-1]
+			}
+
+			ast.Walk(visitFn(func(n ast.Node) {
+				sel, ok := n.(*ast.SelectorExpr)
+				if ok {
+					if id, ok := sel.X.(*ast.Ident); ok {
+						if id.Name == oldNameString {
+							// look up correct new import path in map, rename
+							// it in this object, and add it to the imports.
+							newImpPath := remap[sel.Sel.Name][impPath]
+							// newImpPath := impList[impPath]
+							pathparts := strings.Split(newImpPath, "/")
+							newImpName := pathparts[len(pathparts)-1]
+							id.Name = newImpName
+							// add import path into revisedimports
+							newImpSpec := &ast.ImportSpec{}
+							*newImpSpec = *impSpec
+
+							newImpSpec.Path.Value = strconv.Quote(newImpPath)
+							revisedImports = append(revisedImports, newImpSpec)
+
+							log.Printf("renamed %s to %s", oldNameString, newImpName)
+
+						}
+					}
+				}
+			}), f)
+		} else {
+			revisedImports = append(revisedImports, impSpec)
 		}
 	}
 
