@@ -190,8 +190,8 @@ func RewriteImportedPackageImports(filePath string) error {
 				}
 			}), f)
 		} else if _, ok := PACKAGE_SPLIT[impPath]; ok {
-			log.Printf("Package %s has been refactored into multiple new SDK" +
-				"packages; walking the ast to update each object as required.")
+			log.Printf("Package %s has been refactored into multiple new SDK"+
+				"packages; walking the ast to update each object as required.", impPath)
 			// We store the package split map with the old import path as the
 			// original key so we can find the moved items easily; now we need
 			// to remap it so we can iterate over object names instead to figure

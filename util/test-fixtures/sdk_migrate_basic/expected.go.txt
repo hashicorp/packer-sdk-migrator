@@ -1,0 +1,61 @@
+//go:generate mapstructure-to-hcl2 -type Config
+
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/hashicorp/hcl/v2/hcldec"
+	packercommon_common "github.com/hashicorp/packer-plugin-sdk/common"
+	"github.com/hashicorp/packer-plugin-sdk/guestexec"
+	packercommon_commonsteps "github.com/hashicorp/packer-plugin-sdk/multistep/commonsteps"
+	"github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer-plugin-sdk/template/config"
+	interp "github.com/hashicorp/packer-plugin-sdk/template/interpolate"
+)
+
+type Config struct {
+	Comment string `mapstructure:"comment"`
+	// named import with package split
+	packercommon_commonsteps.CDConfig
+	packercommon_commonsteps.FloppyConfig
+	packercommon_common.PackerConfig
+
+	// one to one rename with named import
+	ctx interp.Context
+}
+
+type CommentProvisioner struct {
+	config Config
+}
+
+func (b *CommentProvisioner) ConfigSpec() hcldec.ObjectSpec {
+	return b.config.FlatMapstructure().HCL2Spec()
+}
+
+func (p *CommentProvisioner) Prepare(raws ...interface{}) error {
+	err := config.Decode(&p.config, &config.DecodeOpts{
+		Interpolate:        true,
+		InterpolateContext: &p.config.ctx,
+	}, raws...)
+	if err != nil {
+		return err
+	}
+
+	// Tests whether package rename works; selector will have to be updated
+	gc := &guestexec.GuestCommands{
+		GuestOSType: "windows",
+		Sudo:        false,
+	}
+
+	log.Printf("test gc is %#v", gc)
+
+	return nil
+}
+
+// "packer." in this input represents a package move without a named import or rename
+func (p *CommentProvisioner) Provision(_ context.Context, ui packer.Ui, _ packer.Communicator, generatedData map[string]interface{}) error {
+	// no-op provisioner
+	return nil
+}
