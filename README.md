@@ -49,7 +49,3 @@ The migration tool will then make the following changes:
  - run `go mod tidy`
 
 If you use vendored Go dependencies, you should run `go mod vendor` afterwards.
-
-## `packer-sdk-migrator v2upgrade`: migrate from SDKv1 to SDKv2
-
-Migrates a Packer plugin using version 1.x of the standalone SDK to version 2.x of the standalone SDK, updating package import paths.
