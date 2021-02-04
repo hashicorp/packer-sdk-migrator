@@ -25,8 +25,6 @@ Outputs a report containing:
  - Version of `hashicorp/packer` used
  - Whether the plugin uses any `hashicorp/packer` packages that are not in `hashicorp/packer-plugin-sdk`
 
-The `--csv` flag will output values in CSV format.
-
 Exits 0 if the plugin meets all the hard requirements, 1 otherwise.
 
 The Go version requirement is a "soft" requirement: it is strongly recommended to upgrade to Go version 1.12+ before migrating to the new SDK, but the migration can still be performed if this requirement is not met.
