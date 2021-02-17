@@ -24,6 +24,7 @@ var ONE_TO_ONE_REPLACEMENTS = map[string]string{
 	"github.com/hashicorp/packer/helper/communicator/sshkey":              "github.com/hashicorp/packer-plugin-sdk/communicator/sshkey",
 	"github.com/hashicorp/packer/template":                                "github.com/hashicorp/packer-plugin-sdk/template",
 	"github.com/hashicorp/packer/communicator/winrm":                      "github.com/hashicorp/packer-plugin-sdk/sdk-internals/communicator/winrm",
+	"github.com/hashicorp/packer/common/uuid":                             "github.com/hashicorp/packer-plugin-sdk/uuid",
 }
 
 // Some packages were moved all as one, but the module name was changed so we
