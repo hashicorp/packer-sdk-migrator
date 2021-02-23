@@ -17,7 +17,7 @@ const (
 	CommandName    = "migrate"
 	oldPackagePath = "github.com/hashicorp/packer"
 	newPackagePath = "github.com/hashicorp/packer-plugin-sdk"
-	defaultVersion = "v0.0.10"
+	defaultVersion = "v0.0.14"
 )
 
 var printConfig = printer.Config{

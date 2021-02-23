@@ -23,7 +23,7 @@ const (
 	packerVersionConstraint = ">=1.5.0"
 
 	sdkModPath           = "github.com/hashicorp/packer-plugin-sdk"
-	sdkVersionConstraint = ">=0.1.0"
+	sdkVersionConstraint = ">=0.0.11"
 )
 
 type AlreadyMigrated struct {
@@ -62,7 +62,7 @@ Example:
 }
 
 func (c *command) Synopsis() string {
-	return "Checks whether a Packer plugin is ready to be migrated to the new SDK (v0.1)."
+	return "Checks whether a Packer plugin is ready to be migrated to the new SDK (v0.0.11)."
 }
 
 func (c *command) Run(args []string) int {
