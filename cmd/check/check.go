@@ -23,7 +23,7 @@ const (
 	packerVersionConstraint = ">=1.5.0"
 
 	sdkModPath           = "github.com/hashicorp/packer-plugin-sdk"
-	sdkVersionConstraint = ">=0.0.11"
+	sdkVersionConstraint = ">=0.0.5"
 )
 
 type AlreadyMigrated struct {
