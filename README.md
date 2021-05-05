@@ -7,7 +7,7 @@ The Packer plugin plugin SDK, previously part of the [github.com/hashicorp/packe
 ## Installation
 
 ```sh
-go install github.com/hashicorp/packer-sdk-migrator
+go install github.com/hashicorp/packer-sdk-migrator@latest
 $GOBIN/packer-sdk-migrator
 ```
 
